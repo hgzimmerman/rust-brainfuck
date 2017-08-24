@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="Cargo &lt;rustBrainfuck&gt;">
     <CLASSES>
-      <root url="file://$USER_HOME$/.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.29" />
       <root url="file://$USER_HOME$/.cargo/registry/src/github.com-1ecc6299db9ec823/nom-3.2.0" />
+      <root url="file://$USER_HOME$/.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.29" />
       <root url="file://$USER_HOME$/.cargo/registry/src/github.com-1ecc6299db9ec823/memchr-1.0.1" />
     </CLASSES>
     <JAVADOC />

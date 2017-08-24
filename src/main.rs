@@ -4,18 +4,32 @@ use nom::*;
 
 use std::str;
 use std::str::FromStr;
+use std::str::Chars;
+use std::io::{self, Read};
+use std::ascii::AsciiExt;
+
+const TAPE_SIZE: usize = 32000;
+type Tape = [u8; TAPE_SIZE];
 
 fn main() {
+    //Read stdin
+    let mut buffer: String = String::new();
+    let stdin = io::stdin();
+    let mut handle = stdin.lock();
+    handle.read_to_string(&mut buffer);
+    let stdin_input: String = buffer;
 
-    const TAPE_SIZE: usize = 32000;
+    // read optional modifiers
 
-    let mut tape: [u8; TAPE_SIZE] = [0; TAPE_SIZE];
+    
+
+    // Set up tape
+    let mut tape: Tape = [0; TAPE_SIZE];
     let mut tape_pointer: usize = 0;
 
-    let tokens = parse_input("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++.".to_string());
-    println!("{:?}", tokens);
-
-    consume_tokens(&tokens, &mut tape, &mut tape_pointer);
+    // parse the tokens, run BF on tokens.
+    let tokens = parse_input(stdin_input);
+    consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut "".chars());
 }
 
 
@@ -32,7 +46,7 @@ enum Token {
 }
 
 
-fn consume_tokens(tokens: &Vec<Token>, tape: &mut [u8; 32000], tape_pointer: &mut usize) -> String {
+fn consume_tokens(tokens: &Vec<Token>, tape: &mut Tape, tape_pointer: &mut usize, input: &mut Chars) -> String {
     let mut output_string: String = String::new();
 
     for token in tokens {
@@ -53,9 +67,24 @@ fn consume_tokens(tokens: &Vec<Token>, tape: &mut [u8; 32000], tape_pointer: &mu
                 print!("{}", tape[*tape_pointer] as char);
                 output_string.push(tape[*tape_pointer] as char);
             },
+            Token::Input => {
+                let character = match input.next() {
+                    Some(c) => {
+                        if c.is_ascii() {
+                            let value: u8 = c as u8;
+                            tape[*tape_pointer] = value; // set the value at the ptr to be the value of the input character.
+                        } else {
+                            panic!("character {} is not ascii", c);
+                        }
+                    },
+                    None => {
+                        panic!("Ran out of input");  // todo, look for some spec on BF to find out what to do here. Should I loop back around the input?
+                    }
+                };
+            },
             Token::Loop { ref expr } => {
                 while tape[*tape_pointer] > 0 {
-                    consume_tokens(&expr, tape, tape_pointer);
+                    consume_tokens(&expr, tape, tape_pointer, input);
                 }
             }
             _ => {}
@@ -102,6 +131,13 @@ named!(output_parser<&[u8], Token>,
     )
 );
 
+named!(input_parser<&[u8], Token>,
+    do_parse!(
+        tag!(",") >>
+        (Token::Input)
+    )
+);
+
 named!(comment_parser<&[u8], Token>,
     do_parse!(
         tag!("//") >>
@@ -122,7 +158,7 @@ named!(loop_parser<&[u8], Token>,
 );
 
 named!(syntax<Token>,
-    alt!( plus_parser | minus_parser | shiftr_parser | shiftl_parser | output_parser | loop_parser | comment_parser )
+    alt!( plus_parser | minus_parser | shiftr_parser | shiftl_parser | output_parser | input_parser | loop_parser | comment_parser )
 );
 
 named!(brainfuck_parser<&[u8], Vec<Token> >,
@@ -251,7 +287,7 @@ fn hello_world_integration_test() {
 
     let tokens: Vec<Token> = parse_input(bf);
 
-    let output = consume_tokens(&tokens, &mut tape, &mut tape_pointer);
+    let output = consume_tokens(&tokens, &mut tape, &mut tape_pointer, "".chars());
     assert_eq!(output, "Hello World!\n");
 }
 
@@ -267,7 +303,7 @@ fn multiplication_integration_test() {
 
     let tokens: Vec<Token> = parse_input(bf);
 
-    let _ = consume_tokens(&tokens, &mut tape, &mut tape_pointer);
+    let _ = consume_tokens(&tokens, &mut tape, &mut tape_pointer, "".chars());
     assert_eq!(tape_pointer, 1);
     assert_eq!(tape[tape_pointer], 21);
 }
