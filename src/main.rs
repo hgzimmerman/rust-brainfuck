@@ -8,7 +8,6 @@ use clap::{Arg, App, SubCommand};
 use std::str;
 use std::str::FromStr;
 use std::str::Chars;
-use std::io::{self, Read};
 use std::ascii::AsciiExt;
 
 
@@ -17,11 +16,11 @@ type Tape = [u8; TAPE_SIZE];
 
 fn main() {
     //Read stdin
-    let mut buffer: String = String::new();
-    let stdin = io::stdin();
-    let mut handle = stdin.lock();
-    handle.read_to_string(&mut buffer);
-    let stdin_input: String = buffer; // Brainfuck it gotten from stdin.
+//    let mut buffer: String = String::new();
+//    let stdin = io::stdin();
+//    let mut handle = stdin.lock();
+//    handle.read_to_string(&mut buffer);
+//    let stdin_input: String = buffer; // Brainfuck it gotten from stdin.
 
     // read optional "input" string
 
@@ -37,16 +36,26 @@ fn main() {
             .help("A string for your Brainfuck program to read. (',' character).")
             .takes_value(true)
         )
+        .arg(
+            Arg::with_name("brainfuck")
+            .short("b")
+            .long("brainfuck")
+            .value_name("CODE")
+            .help("The Brainfuck program you wish to execute.")
+            .takes_value(true)
+        )
         .get_matches();
     let input_str: String = matches.value_of("input").unwrap_or("").to_string();
     let mut input_chars = input_str.chars();
+    let bf_input: String = matches.value_of("brainfuck").unwrap_or("").to_string();
+
 
     // Set up tape
     let mut tape: Tape = [0; TAPE_SIZE];
     let mut tape_pointer: usize = 0;
 
     // parse the tokens, run BF on tokens.
-    let tokens = parse_input(stdin_input);
+    let tokens = parse_input(bf_input);
     consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut input_chars);
 }
 
@@ -194,7 +203,6 @@ fn parse_input(input: String) -> Vec<Token> {
 
 
 
-
 #[test]
 fn plus_parser_test() {
     let plus = &b"+"[..];
@@ -313,7 +321,6 @@ fn hello_world_integration_test() {
 #[test]
 fn multiplication_integration_test() {
     let bf = "+++++++ [>+++<-]>".to_string(); // 7 * 3
-
 
     let mut tape: Tape = [0; TAPE_SIZE];
     let mut tape_pointer: usize = 0;
