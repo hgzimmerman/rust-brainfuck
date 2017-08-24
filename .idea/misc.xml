@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectRootManager">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+  <component name="RustProjectSettings">
+    <option name="explicitPathToStdlib" value="$USER_HOME$/rust_src/rust/src" />
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.nix-profile/bin" />
+  </component>
+</project>
