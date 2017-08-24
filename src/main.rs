@@ -1,12 +1,16 @@
 #[macro_use]
 extern crate nom;
+extern crate clap;
+
 use nom::*;
+use clap::{Arg, App, SubCommand};
 
 use std::str;
 use std::str::FromStr;
 use std::str::Chars;
 use std::io::{self, Read};
 use std::ascii::AsciiExt;
+
 
 const TAPE_SIZE: usize = 32000;
 type Tape = [u8; TAPE_SIZE];
@@ -17,11 +21,25 @@ fn main() {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     handle.read_to_string(&mut buffer);
-    let stdin_input: String = buffer;
+    let stdin_input: String = buffer; // Brainfuck it gotten from stdin.
 
-    // read optional modifiers
+    // read optional "input" string
 
-    
+    let matches = App::new("Rust Brainfuck")
+        .version("0.1.0")
+        .author("Henry Zimmerman")
+        .about("A Brainfuck interpreter written in Rust.")
+        .arg(
+            Arg::with_name("input")
+            .short("i")
+            .long("input")
+            .value_name("INPUT")
+            .help("A string for your Brainfuck program to read. (',' character).")
+            .takes_value(true)
+        )
+        .get_matches();
+    let input_str: String = matches.value_of("input").unwrap_or("").to_string();
+    let mut input_chars = input_str.chars();
 
     // Set up tape
     let mut tape: Tape = [0; TAPE_SIZE];
@@ -29,7 +47,7 @@ fn main() {
 
     // parse the tokens, run BF on tokens.
     let tokens = parse_input(stdin_input);
-    consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut "".chars());
+    consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut input_chars);
 }
 
 
@@ -68,7 +86,7 @@ fn consume_tokens(tokens: &Vec<Token>, tape: &mut Tape, tape_pointer: &mut usize
                 output_string.push(tape[*tape_pointer] as char);
             },
             Token::Input => {
-                let character = match input.next() {
+                match input.next() {
                     Some(c) => {
                         if c.is_ascii() {
                             let value: u8 = c as u8;
@@ -287,7 +305,7 @@ fn hello_world_integration_test() {
 
     let tokens: Vec<Token> = parse_input(bf);
 
-    let output = consume_tokens(&tokens, &mut tape, &mut tape_pointer, "".chars());
+    let output = consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut "".chars());
     assert_eq!(output, "Hello World!\n");
 }
 
@@ -297,13 +315,28 @@ fn multiplication_integration_test() {
     let bf = "+++++++ [>+++<-]>".to_string(); // 7 * 3
 
 
-    const TAPE_SIZE: usize = 32000;
-    let mut tape: [u8; TAPE_SIZE] = [0; TAPE_SIZE];
+    let mut tape: Tape = [0; TAPE_SIZE];
     let mut tape_pointer: usize = 0;
 
     let tokens: Vec<Token> = parse_input(bf);
 
-    let _ = consume_tokens(&tokens, &mut tape, &mut tape_pointer, "".chars());
+    let _ = consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut "".chars());
     assert_eq!(tape_pointer, 1);
     assert_eq!(tape[tape_pointer], 21);
+}
+
+#[test]
+fn read_input_test() {
+    let bf = ",.>,.".to_string();
+
+    let mut tape: Tape = [0; TAPE_SIZE];
+    let mut tape_pointer: usize = 0;
+
+    let tokens: Vec<Token> = parse_input(bf);
+
+    let output = consume_tokens(&tokens, &mut tape, &mut tape_pointer, &mut "HI".chars());
+    assert_eq!(tape_pointer, 1);
+    assert_eq!(tape[0], 72); // H
+    assert_eq!(tape[1], 73); // I
+    assert_eq!(output, "HI".to_string());
 }
