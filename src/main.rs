@@ -28,9 +28,7 @@ fn main() {
         )
         .arg(
             Arg::with_name("brainfuck")
-            .short("b")
-            .long("brainfuck")
-            .value_name("CODE")
+            .value_name("BRAINFUCK")
             .help("The Brainfuck program you wish to execute.")
             .takes_value(true)
             .required(true)
