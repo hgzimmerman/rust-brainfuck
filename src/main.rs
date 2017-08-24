@@ -23,7 +23,7 @@ fn main() {
             .short("i")
             .long("input")
             .value_name("INPUT")
-            .help("A string for your Brainfuck program to read. (',' character).")
+            .help("A string for your Brainfuck program to read using the ',' character.")
             .takes_value(true)
         )
         .arg(
