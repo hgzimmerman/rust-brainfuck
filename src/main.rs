@@ -3,10 +3,8 @@ extern crate nom;
 extern crate clap;
 
 use nom::*;
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App};
 
-use std::str;
-use std::str::FromStr;
 use std::str::Chars;
 use std::ascii::AsciiExt;
 
@@ -15,15 +13,7 @@ const TAPE_SIZE: usize = 32000;
 type Tape = [u8; TAPE_SIZE];
 
 fn main() {
-    //Read stdin
-//    let mut buffer: String = String::new();
-//    let stdin = io::stdin();
-//    let mut handle = stdin.lock();
-//    handle.read_to_string(&mut buffer);
-//    let stdin_input: String = buffer; // Brainfuck it gotten from stdin.
-
-    // read optional "input" string
-
+    // read arguments
     let matches = App::new("Rust Brainfuck")
         .version("0.1.0")
         .author("Henry Zimmerman")
@@ -43,6 +33,7 @@ fn main() {
             .value_name("CODE")
             .help("The Brainfuck program you wish to execute.")
             .takes_value(true)
+            .required(true)
         )
         .get_matches();
     let input_str: String = matches.value_of("input").unwrap_or("").to_string();
@@ -308,7 +299,7 @@ fn hello_world_integration_test() {
 ".to_string();
 
     const TAPE_SIZE: usize = 32000;
-    let mut tape: [u8; TAPE_SIZE] = [0; TAPE_SIZE];
+    let mut tape: Tape = [0; TAPE_SIZE];
     let mut tape_pointer: usize = 0;
 
     let tokens: Vec<Token> = parse_input(bf);
