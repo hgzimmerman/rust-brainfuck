@@ -7,6 +7,7 @@ use clap::{Arg, App};
 
 use std::str::Chars;
 use std::ascii::AsciiExt;
+use nom::types::CompleteByteSlice as Input;
 
 
 const TAPE_SIZE: usize = 32000;
@@ -56,7 +57,7 @@ enum Token {
     ShiftRight,
     ShiftLeft,
     Output,
-    Input,
+    InputT,
     Loop {expr: Vec<Token>},
     Comment
 }
@@ -83,7 +84,7 @@ fn consume_tokens(tokens: &Vec<Token>, tape: &mut Tape, tape_pointer: &mut usize
                 print!("{}", tape[*tape_pointer] as char);
                 output_string.push(tape[*tape_pointer] as char);
             },
-            Token::Input => {
+            Token::InputT => {
                 match input.next() {
                     Some(c) => {
                         if c.is_ascii() {
@@ -112,49 +113,49 @@ fn consume_tokens(tokens: &Vec<Token>, tape: &mut Tape, tape_pointer: &mut usize
 
 
 
-named!(plus_parser<Token>,
+named!(plus_parser<Input, Token>,
     do_parse!(
         tag!("+") >>
         (Token::Plus)
     )
 );
 
-named!(minus_parser<&[u8], Token>,
+named!(minus_parser<Input, Token>,
     do_parse!(
         tag!("-") >>
         (Token::Minus)
     )
 );
 
-named!(shiftr_parser<&[u8], Token>,
+named!(shiftr_parser<Input, Token>,
     do_parse!(
         tag!(">") >>
         (Token::ShiftRight)
     )
 );
 
-named!(shiftl_parser<&[u8], Token>,
+named!(shiftl_parser<Input, Token>,
     do_parse!(
         tag!("<") >>
         (Token::ShiftLeft)
     )
 );
 
-named!(output_parser<&[u8], Token>,
+named!(output_parser<Input, Token>,
     do_parse!(
         tag!(".") >>
         (Token::Output)
     )
 );
 
-named!(input_parser<&[u8], Token>,
+named!(input_parser<Input, Token>,
     do_parse!(
         tag!(",") >>
-        (Token::Input)
+        (Token::InputT)
     )
 );
 
-named!(comment_parser<&[u8], Token>,
+named!(comment_parser<Input, Token>,
     do_parse!(
         tag!("//") >>
         complete!(many_till!(anychar, line_ending)) >>
@@ -166,18 +167,18 @@ named!(any_end,
     complete!(alt!(line_ending | eof!()))
 );
 
-named!(loop_parser<&[u8], Token>,
+named!(loop_parser<Input, Token>,
     do_parse!(
         expression: ws!(delimited!(tag!("["), many0!(syntax), tag!("]")))>>
         (Token::Loop {expr: expression})
     )
 );
 
-named!(syntax<Token>,
+named!(syntax<Input, Token>,
     alt!( plus_parser | minus_parser | shiftr_parser | shiftl_parser | output_parser | input_parser | loop_parser | comment_parser )
 );
 
-named!(brainfuck_parser<&[u8], Vec<Token> >,
+named!(brainfuck_parser<Input, Vec<Token> >,
     do_parse!(
         tokens: many0!(ws!(syntax)) >>
         (tokens)
@@ -185,7 +186,8 @@ named!(brainfuck_parser<&[u8], Vec<Token> >,
 );
 
 fn parse_input(input: String) -> Vec<Token> {
-    let (_,b) = brainfuck_parser(input.as_bytes()).unwrap();
+    let input = Input::from(input.as_bytes());
+    let (_,b) = brainfuck_parser(input).unwrap();
     b
 }
 
@@ -194,73 +196,72 @@ fn parse_input(input: String) -> Vec<Token> {
 
 #[test]
 fn plus_parser_test() {
-    let plus = &b"+"[..];
+    let plus = Input(&b"+"[..]);
     let res = plus_parser(plus);
-    let remainder = &b""[..];
-    assert_eq!(res, IResult::Done(remainder, Token::Plus));
+    let remainder = Input(&b""[..]);
+    assert_eq!(res, Ok((remainder, Token::Plus)));
 }
 
 #[test]
 fn syntax_test() {
-    let syn = &b"-"[..];
-    let remainder = &b""[..];
+    let syn = Input(&b"-"[..]);
+    let remainder = Input(&b""[..]);
     let res = syntax(syn);
-    assert_eq!(res, IResult::Done(remainder, Token::Minus));
+    assert_eq!(res, Ok((remainder, Token::Minus)));
 }
 
 #[test]
 fn loop_test() {
-    let looop = &b"[++-]"[..];
-    let remainder = &b""[..];
+    let looop = Input(&b"[++-]"[..]);
+    let remainder = Input(&b""[..]);
     let res = loop_parser(looop);
     use Token::*;
-    assert_eq!(res, IResult::Done(remainder, Token::Loop {expr: vec!(Plus, Plus, Minus)}));
+    assert_eq!(res, Ok((remainder, Token::Loop {expr: vec!(Plus, Plus, Minus)})));
 }
 
 #[test]
 fn nested_loop_test() {
-    let looop = &b"[+[++]-]"[..];
-    let remainder = &b""[..];
+    let looop = Input(&b"[+[++]-]"[..]);
+    let remainder = Input(&b""[..]);
     let res = loop_parser(looop);
 
     use Token::*;
-    assert_eq!(res, IResult::Done(remainder, Token::Loop {expr: vec!(Plus, Loop {expr: vec!(Plus, Plus)}, Minus)}));
+    assert_eq!(res, Ok((remainder, Token::Loop {expr: vec!(Plus, Loop {expr: vec!(Plus, Plus)}, Minus)})));
 }
 
 #[test]
 fn ignore_whitespace_test() {
-    let bf = &b"+-+>  <  -
+    let bf = Input(&b"+-+>  <  -
 
-    +"[..];
-    let remainder = &b""[..];
+    +"[..]);
+    let remainder = Input(&b""[..]);
     let res = brainfuck_parser(bf);
 
     use Token::*;
-    assert_eq!(res, IResult::Done(remainder, vec!(Plus, Minus, Plus, ShiftRight, ShiftLeft, Minus, Plus)));
+    assert_eq!(res, Ok((remainder, vec!(Plus, Minus, Plus, ShiftRight, ShiftLeft, Minus, Plus))));
 }
 
 
 // tests for end of line for the comment
 #[test]
 fn ignore_comment_eol_test() {
-    let bf = &b"+ //+
-    +"[..];
-    let remainder = &b""[..];
+    let bf = Input(&b"+ //+
+    +"[..]);
+    let remainder = Input(&b""[..]);
     let res = brainfuck_parser(bf);
 
     use Token::*;
-    assert_eq!(res, IResult::Done(remainder, vec!(Plus, Comment, Plus)));
+    assert_eq!(res, Ok((remainder, vec!(Plus, Comment, Plus))));
 }
 
 //tests for end of file
 //#[test]
 fn ignore_comment_eof_test() {
-    let bf = &b"+ //"[..];
-    let remainder = &b""[..];
+    let bf = Input(&b"+ //"[..]);
+    let remainder = Input(&b""[..]);
     let res = brainfuck_parser(bf);
 
-    use Token::*;
-    assert_eq!(res, IResult::Done(remainder, vec!(Plus, Comment)));
+    assert_eq!(res, Ok((remainder, vec!(Token::Plus, Token::Comment))));
 }
 
 
